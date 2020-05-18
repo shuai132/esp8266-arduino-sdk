@@ -10,6 +10,29 @@ extern "C" {
 
 #include "config.h"
 #include "log.h"
+#include "PacketProcessor.h"
+#include "MsgParser.h"
+
+#define RELAY_PIN 2
+
+static AsyncClient* client;
+
+static PacketProcessor packetProcessor(true);
+static MsgParser msgParser;
+
+static void sendRaw(const std::string& data) {
+    client->write(data.data(), data.size());
+}
+
+static void sendRaw(const void* data, size_t size) {
+    client->write((char*)data, size);
+}
+
+static void sendMsg(const std::string& type, const std::string& msg) {
+    auto jsonMsg = msgParser.makeMsg(type, msg);
+    auto payload = packetProcessor.pack(jsonMsg);
+    sendRaw(payload.data(), payload.size());
+}
 
 static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
     LOGD("handleData: from: %s, len: %u, data: %s"
@@ -17,16 +40,13 @@ static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
             , len
             , std::string((char*)data, std::min(len, 10U)).c_str()
             );
-    // echo
-    client->write((char*)data, len);
+    packetProcessor.feed((uint8_t*)data, len);
 }
 
 static void onConnect(void* arg, AsyncClient* client) {
-    LOGD("onConnect: host_ip: %s host_port:%d \n", TCP_HOST, TCP_PORT);
-    client->write("hello");
+    LOGD("onConnect: host_ip: %s host_port:%d", TCP_HOST, TCP_PORT);
+    sendMsg(Msg::Type::MSG, "hello");
 }
-
-static AsyncClient* client;
 
 void setup() {
     Serial.begin(115200);
@@ -38,6 +58,27 @@ void setup() {
     client->onDisconnect([](void*, AsyncClient*){
         LOGD("client disconnect");
     }, client);
+
+    // user logic
+    pinMode(RELAY_PIN, OUTPUT);
+
+    packetProcessor.setMaxBufferSize(1024);
+    packetProcessor.setOnPacketHandle([](uint8_t* data, size_t size) {
+        msgParser.parser(std::string((char*)data, size));//todo: performance
+    });
+
+    msgParser.setRelayCb([](bool relay, MsgParser::ID_t id) {
+        LOGD("relay set to: %d", !relay);
+        digitalWrite(RELAY_PIN, !relay);
+        sendRaw(msgParser.makeRsp(id));
+    });
+
+    msgParser.setHostRegexCb([](std::string hostRegex) {
+        LOGD("HostRegexCb: %s", hostRegex.c_str());
+    });
+    msgParser.setHostPasswdCb([](std::string passwd) {
+        LOGD("HostPasswdCb: %s", passwd.c_str());
+    });
 }
 
 void loop() {
