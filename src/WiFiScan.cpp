@@ -1,12 +1,18 @@
 #include <ESP8266WiFi.h>
 
 #include "WifiScan.h"
+#include "config.h"
 #include "log.h"
 
 void WiFiScan::setSSIDEnds(std::string ssid) {
     _ssidEnds = std::move(ssid);
 }
 
+/**
+ * @return wifi ssid  扫描名称符合条件的AP
+ * 1. 为空时表示未扫描到
+ * 2. 可能返回系统配置AP
+ */
 std::string WiFiScan::scan() {
     auto networks = WiFi.scanNetworks();
     LOGD("networks: %d", networks);
@@ -33,6 +39,10 @@ std::string WiFiScan::scan() {
         if (ssid.endsWith(_ssidEnds.c_str())) {
             LOGD("find match ap: %s", ssidStr.c_str());
             onMatchAP(ssidStr);
+            return ssidStr;
+        }
+
+        if (ssid == CONFIG_AP_SSID) {
             return ssidStr;
         }
     }

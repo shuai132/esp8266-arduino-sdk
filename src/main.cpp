@@ -69,16 +69,16 @@ static void initHostFromEEPROM() {
 
 #if TRY_USE_EEPROM_INFO
     if (strlen(hostInfo->ssidRE) == 0) {
-        strcpy(hostInfo->ssidRE, SSID_RE);
+        strcpy(hostInfo->ssidRE, SSID_RE_DEFAULT);
         EEPROM.commit();
     }
     if (strlen(hostInfo->passwd)) {
-        strcpy(hostInfo->passwd, PASSWORD);
+        strcpy(hostInfo->passwd, PASSWORD_DEFAULT);
         EEPROM.commit();
     }
 #else
-    strcpy(hostInfo->ssidRE, SSID_RE);
-    strcpy(hostInfo->passwd, PASSWORD);
+    strcpy(hostInfo->ssidRE, SSID_RE_DEFAULT);
+    strcpy(hostInfo->passwd, PASSWORD_DEFAULT);
 #endif
 }
 
@@ -129,7 +129,7 @@ void setup() {
         LOGD("HostPasswdCb: %s", passwd.c_str());
         auto str = passwd.c_str();
         memcpy(hostInfo->passwd, str, std::min(strlen(str) + 1, MAX_PASSWD_LEN));
-        hostInfo->passwd[MAX_SSIDRE_LEN - 1] = '\0';
+        hostInfo->passwd[MAX_PASSWD_LEN - 1] = '\0';
         EEPROM.commit();
     });
 }
@@ -148,7 +148,8 @@ void loop() {
 
         LOGD("try connect to: %s", ssid.c_str());
 
-        WiFi.begin(ssid.c_str(), hostInfo->passwd);
+        auto isConfigAp = ssid == CONFIG_AP_SSID;
+        WiFi.begin(ssid.c_str(), isConfigAp ? CONFIG_AP_PASSWD : hostInfo->passwd);
         while (WiFi.status() != WL_CONNECTED) {
             LOGD("WiFi connecting...");
             delay(500);
