@@ -1,16 +1,20 @@
-#include <ESP8266WiFi.h>
-#include <ESPAsyncTCP.h>
+#include <algorithm>
 
 extern "C" {
 #include <osapi.h>
 #include <os_type.h>
 }
 
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <EEPROM.h>
+
 #include "config.h"
 #include "log.h"
 #include "PacketProcessor.h"
 #include "MsgParser.h"
 #include "Relay.h"
+#include "WifiScan.h"
 
 static AsyncClient* client;
 
@@ -18,6 +22,17 @@ static PacketProcessor packetProcessor(true);
 static MsgParser msgParser;
 
 static Relay* relay;
+
+static WiFiScan wiFiScan;
+
+const size_t MAX_SSIDRE_LEN = 50 + 1;
+const size_t MAX_PASSWD_LEN = 16 + 1;
+struct HostInfo {
+    char ssidRE[MAX_SSIDRE_LEN];
+    char passwd[MAX_PASSWD_LEN];
+};
+
+static HostInfo* hostInfo;
 
 static void sendRaw(const std::string& data) {
     client->write(data.data(), data.size());
@@ -43,16 +58,43 @@ static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
 }
 
 static void onConnect(void* arg, AsyncClient* client) {
-    LOGD("onConnect: host_ip: %s host_port:%d", TCP_HOST, TCP_PORT);
+    LOGD("onConnect: host_ip: %s host_port:%d", WiFi.gatewayIP().toString().c_str(), TCP_PORT);
     sendMsg(Msg::Type::MSG, "hello");
+}
+
+static void initHostFromEEPROM() {
+    EEPROM.begin(sizeof(HostInfo));
+    hostInfo = reinterpret_cast<HostInfo*>(EEPROM.getDataPtr());
+    LOGD("hostInfo of EEPROM: %s, %s", hostInfo->ssidRE, hostInfo->passwd);
+
+#if TRY_USE_EEPROM_INFO
+    if (strlen(hostInfo->ssidRE) == 0) {
+        strcpy(hostInfo->ssidRE, SSID_RE);
+        EEPROM.commit();
+    }
+    if (strlen(hostInfo->passwd)) {
+        strcpy(hostInfo->passwd, PASSWORD);
+        EEPROM.commit();
+    }
+#else
+    strcpy(hostInfo->ssidRE, SSID_RE);
+    strcpy(hostInfo->passwd, PASSWORD);
+#endif
 }
 
 void setup() {
     Serial.begin(115200);
     delay(20);
 
+    initHostFromEEPROM();
+
+    LOGD("init wiFiScan");
+    wiFiScan.setSSIDEnds(hostInfo->ssidRE);
+
+    LOGD("init relay");
     relay = new Relay(RELAY_PIN);
 
+    LOGD("init client");
     client = new AsyncClient;
     client->onData(&handleData, client);
     client->onConnect(&onConnect, client);
@@ -60,37 +102,62 @@ void setup() {
         LOGD("client disconnect");
     }, client);
 
+    LOGD("init packetProcessor");
     packetProcessor.setMaxBufferSize(1024);
     packetProcessor.setOnPacketHandle([](uint8_t* data, size_t size) {
         msgParser.parser(std::string((char*)data, size));//todo: performance
     });
 
+    LOGD("init msgParser");
     msgParser.setRelayCb([](bool on, MsgParser::ID_t id) {
         LOGD("relay pin set to: %d", !on);
         relay->set(!on);
         sendRaw(msgParser.makeRsp(id));
     });
 
+    LOGD("init message callback");
     msgParser.setHostRegexCb([](const std::string& hostRegex) {
         LOGD("HostRegexCb: %s", hostRegex.c_str());
+        wiFiScan.setSSIDEnds(hostRegex);
+        auto str = hostRegex.c_str();
+        // 限定保存长度 注意最后一位\0
+        memcpy(hostInfo->ssidRE, str, std::min(strlen(str) + 1, MAX_SSIDRE_LEN));
+        hostInfo->ssidRE[MAX_SSIDRE_LEN - 1] = '\0';
+        EEPROM.commit();
     });
     msgParser.setHostPasswdCb([](const std::string& passwd) {
         LOGD("HostPasswdCb: %s", passwd.c_str());
+        auto str = passwd.c_str();
+        memcpy(hostInfo->passwd, str, std::min(strlen(str) + 1, MAX_PASSWD_LEN));
+        hostInfo->passwd[MAX_SSIDRE_LEN - 1] = '\0';
+        EEPROM.commit();
     });
 }
 
 void loop() {
     if (not WiFi.isConnected()) {
         WiFi.mode(WIFI_STA);
-        WiFi.begin(SSID, PASSWORD);
+
+        SCAN:
+        auto ssid = wiFiScan.scan();
+        if (ssid.empty()) {
+            LOGD("scan empty");
+            delay(1000);
+            goto SCAN;
+        }
+
+        LOGD("try connect to: %s", ssid.c_str());
+
+        WiFi.begin(ssid.c_str(), hostInfo->passwd);
         while (WiFi.status() != WL_CONNECTED) {
             LOGD("WiFi connecting...");
             delay(500);
         }
+        LOGD("gatewayIP: %s", WiFi.gatewayIP().toString().c_str());
     }
 
     if (not client->connected()) {
-        client->connect(TCP_HOST, TCP_PORT);
+        client->connect(WiFi.gatewayIP(), TCP_PORT);
         delay(500);
     }
 }
