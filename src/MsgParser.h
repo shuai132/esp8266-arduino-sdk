@@ -7,6 +7,7 @@
 #endif
 
 #include "MakeEvent.hpp"
+#include "noncopyable.h"
 
 namespace Msg {
 namespace Type {
@@ -15,7 +16,7 @@ const static char* RSP = "rsp";
 }
 }
 
-class MsgParser {
+class MsgParser : noncopyable {
 public:
     using ID_t = uint32_t;
     /**

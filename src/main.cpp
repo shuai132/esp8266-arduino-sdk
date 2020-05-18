@@ -6,19 +6,18 @@ extern "C" {
 #include <os_type.h>
 }
 
-#include <algorithm>
-
 #include "config.h"
 #include "log.h"
 #include "PacketProcessor.h"
 #include "MsgParser.h"
-
-#define RELAY_PIN 2
+#include "Relay.h"
 
 static AsyncClient* client;
 
 static PacketProcessor packetProcessor(true);
 static MsgParser msgParser;
+
+static Relay* relay;
 
 static void sendRaw(const std::string& data) {
     client->write(data.data(), data.size());
@@ -52,6 +51,8 @@ void setup() {
     Serial.begin(115200);
     delay(20);
 
+    relay = new Relay(RELAY_PIN);
+
     client = new AsyncClient;
     client->onData(&handleData, client);
     client->onConnect(&onConnect, client);
@@ -59,24 +60,21 @@ void setup() {
         LOGD("client disconnect");
     }, client);
 
-    // user logic
-    pinMode(RELAY_PIN, OUTPUT);
-
     packetProcessor.setMaxBufferSize(1024);
     packetProcessor.setOnPacketHandle([](uint8_t* data, size_t size) {
         msgParser.parser(std::string((char*)data, size));//todo: performance
     });
 
-    msgParser.setRelayCb([](bool relay, MsgParser::ID_t id) {
-        LOGD("relay set to: %d", !relay);
-        digitalWrite(RELAY_PIN, !relay);
+    msgParser.setRelayCb([](bool on, MsgParser::ID_t id) {
+        LOGD("relay pin set to: %d", !on);
+        relay->set(!on);
         sendRaw(msgParser.makeRsp(id));
     });
 
-    msgParser.setHostRegexCb([](std::string hostRegex) {
+    msgParser.setHostRegexCb([](const std::string& hostRegex) {
         LOGD("HostRegexCb: %s", hostRegex.c_str());
     });
-    msgParser.setHostPasswdCb([](std::string passwd) {
+    msgParser.setHostPasswdCb([](const std::string& passwd) {
         LOGD("HostPasswdCb: %s", passwd.c_str());
     });
 }
