@@ -1,0 +1,3 @@
+[submodule "modules/LOG"]
+	path = modules/LOG
+	url = https://github.com/shuai132/LOG.git
