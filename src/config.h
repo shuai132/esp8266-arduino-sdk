@@ -10,7 +10,7 @@
 #define TCP_PORT            1234
 
 #define PIN_RELAY           4
-#define PIN_LED             2
+#define PIN_LED             2       // 不要使用它 会影响信号!!!
 
 #define TEST_WITH_DESKTOP           0
 #define TEST_WITH_DESKTOP_SSID      "CU_a"

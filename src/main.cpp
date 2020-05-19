@@ -22,7 +22,6 @@ static PacketProcessor packetProcessor(true);
 static MsgParser msgParser;
 
 static gpio::OUT relay(PIN_RELAY);
-static gpio::OUT led(PIN_LED);
 
 static WiFiScan wiFiScan;
 
@@ -96,7 +95,6 @@ void setup() {
     std::set_new_handler([] {
         FATAL("out of memory");
         for(;;) {
-            led.toggle();
             delay(100);
         }
     });
@@ -173,7 +171,6 @@ void loop() {
 #endif
         while (WiFi.status() != WL_CONNECTED) {
             LOGD("WiFi connecting...");
-            led.toggle();
             delay(500);
         }
         LOGD("gatewayIP: %s", WiFi.gatewayIP().toString().c_str());
@@ -187,5 +184,4 @@ void loop() {
 #endif
         delay(500);
     }
-    led.toggle();
 }
