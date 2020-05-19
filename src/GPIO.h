@@ -15,6 +15,8 @@ public:
 
     void toggle();
 
+    OUT& operator=(uint8_t val);
+
 private:
     uint8_t _pin;
     bool _val;

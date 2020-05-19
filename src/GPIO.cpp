@@ -21,4 +21,8 @@ void OUT::toggle() {
     set(!_val);
 }
 
+OUT& OUT::operator=(uint8_t val) {
+    set(val);
+}
+
 }

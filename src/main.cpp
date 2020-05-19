@@ -87,10 +87,13 @@ static void initHostFromEEPROM() {
     LOGD("use default hostInfo: ssidRE: %s, passwd: %s", hostInfo->ssidRE, hostInfo->passwd);
 #endif
 }
+#include "OLED.h"
 
 void setup() {
     Serial.begin(115200);
     delay(20);
+    OLED_Init();
+    OLED_ShowChar(0, 0, (unsigned char*)"Hello World!", 2);
 
     std::set_new_handler([] {
         FATAL("out of memory");
