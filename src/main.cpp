@@ -44,10 +44,14 @@ static void sendRaw(const void* data, size_t size) {
     client->write((char*)data, size);
 }
 
-static void sendMsg(const std::string& type, const std::string& msg) {
-    auto jsonMsg = msgParser.makeMsg(type, msg);
+static void sendJasonMsg(const std::string& jsonMsg) {
     auto payload = packetProcessor.pack(jsonMsg);
     sendRaw(payload.data(), payload.size());
+}
+
+static void sendMsgByTemplate(const std::string& type, const std::string& msg) {
+    auto jsonMsg = msgParser.makeMsg(type, msg);
+    sendJasonMsg(jsonMsg);
 }
 
 static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
@@ -61,7 +65,7 @@ static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
 
 static void onConnect(void* arg, AsyncClient* client) {
     LOGD("onConnect: host_ip: %s host_port:%d", WiFi.gatewayIP().toString().c_str(), TCP_PORT);
-    sendMsg(Msg::Type::MSG, "hello");
+    sendMsgByTemplate(Msg::Type::MSG, "hello");
 }
 
 static void initHostFromEEPROM() {
@@ -114,11 +118,12 @@ void setup() {
     msgParser.setRelayCb([](bool on, MsgParser::ID_t id) {
         LOGD("relay pin set to: %d", !on);
         relay->set(!on);
-        sendRaw(msgParser.makeRsp(id));
+
+        sendJasonMsg(msgParser.makeRsp(id));
     });
 
     LOGD("init message callback");
-    msgParser.setHostRegexCb([](const std::string& hostRegex) {
+    msgParser.setHostRegexCb([](const std::string& hostRegex, MsgParser::ID_t id) {
         LOGD("HostRegexCb: %s", hostRegex.c_str());
         wiFiScan.setSSIDEnds(hostRegex);
         auto str = hostRegex.c_str();
@@ -126,13 +131,17 @@ void setup() {
         memcpy(hostInfo->ssidRE, str, std::min(strlen(str) + 1, MAX_SSIDRE_LEN));
         hostInfo->ssidRE[MAX_SSIDRE_LEN - 1] = '\0';
         EEPROM.commit();
+
+        sendJasonMsg(msgParser.makeRsp(id));
     });
-    msgParser.setHostPasswdCb([](const std::string& passwd) {
+    msgParser.setHostPasswdCb([](const std::string& passwd, MsgParser::ID_t id) {
         LOGD("HostPasswdCb: %s", passwd.c_str());
         auto str = passwd.c_str();
         memcpy(hostInfo->passwd, str, std::min(strlen(str) + 1, MAX_PASSWD_LEN));
         hostInfo->passwd[MAX_PASSWD_LEN - 1] = '\0';
         EEPROM.commit();
+
+        sendJasonMsg(msgParser.makeRsp(id));
     });
 }
 

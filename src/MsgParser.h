@@ -28,8 +28,8 @@ public:
      */
     void parser(std::string json, size_t cap = 1024);
     MAKE_EVENT(Relay, bool, ID_t);
-    MAKE_EVENT(HostRegex, std::string);
-    MAKE_EVENT(HostPasswd, std::string);
+    MAKE_EVENT(HostRegex, std::string, ID_t);
+    MAKE_EVENT(HostPasswd, std::string, ID_t);
 
     /**
      {

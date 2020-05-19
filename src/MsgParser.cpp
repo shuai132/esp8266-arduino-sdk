@@ -24,10 +24,10 @@ void MsgParser::parser(std::string json, size_t cap) {
         }
     }
     else if (type == "set_host_regex") {
-        onHostRegex(data);
+        onHostRegex(data, id);
     }
     else if (type == "set_host_passwd") {
-        onHostPasswd(data);
+        onHostPasswd(data, id);
     }
     else {
         LOGE("unknown type: %s", type.c_str());
