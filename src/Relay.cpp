@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "Relay.h"
 
 Relay::Relay(uint8_t pin)

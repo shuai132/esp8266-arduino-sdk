@@ -10,3 +10,9 @@
 #define TCP_PORT            1234
 
 #define RELAY_PIN           2
+
+#define TEST_WITH_DESKTOP           0
+#define TEST_WITH_DESKTOP_SSID      "CU_a"
+#define TEST_WITH_DESKTOP_PASSWD    "1029384756"
+#define TEST_WITH_DESKTOP_IP        "192.168.1.4"
+#define TEST_WITH_DESKTOP_PORT      TCP_PORT

@@ -27,7 +27,9 @@ static WiFiScan wiFiScan;
 
 const size_t MAX_SSIDRE_LEN = 50 + 1;
 const size_t MAX_PASSWD_LEN = 16 + 1;
+const uint16_t HOST_INFO_CONFIGED = 0x5AA5;
 struct HostInfo {
+    uint16_t configed;
     char ssidRE[MAX_SSIDRE_LEN];
     char passwd[MAX_PASSWD_LEN];
 };
@@ -65,20 +67,20 @@ static void onConnect(void* arg, AsyncClient* client) {
 static void initHostFromEEPROM() {
     EEPROM.begin(sizeof(HostInfo));
     hostInfo = reinterpret_cast<HostInfo*>(EEPROM.getDataPtr());
-    LOGD("hostInfo of EEPROM: %s, %s", hostInfo->ssidRE, hostInfo->passwd);
 
 #if TRY_USE_EEPROM_INFO
-    if (strlen(hostInfo->ssidRE) == 0) {
+    if (hostInfo->configed != HOST_INFO_CONFIGED) {
+        hostInfo->configed = HOST_INFO_CONFIGED;
         strcpy(hostInfo->ssidRE, SSID_RE_DEFAULT);
-        EEPROM.commit();
-    }
-    if (strlen(hostInfo->passwd)) {
         strcpy(hostInfo->passwd, PASSWORD_DEFAULT);
         EEPROM.commit();
+    } else {
+        LOGD("use hostInfo from EEPROM: ssidRE: %s, passwd: %s", hostInfo->ssidRE, hostInfo->passwd);
     }
 #else
     strcpy(hostInfo->ssidRE, SSID_RE_DEFAULT);
     strcpy(hostInfo->passwd, PASSWORD_DEFAULT);
+    LOGD("use default hostInfo: ssidRE: %s, passwd: %s", hostInfo->ssidRE, hostInfo->passwd);
 #endif
 }
 
@@ -138,6 +140,9 @@ void loop() {
     if (not WiFi.isConnected()) {
         WiFi.mode(WIFI_STA);
 
+#if TEST_WITH_DESKTOP
+        WiFi.begin(TEST_WITH_DESKTOP_SSID, TEST_WITH_DESKTOP_PASSWD);
+#else
         SCAN:
         auto ssid = wiFiScan.scan();
         if (ssid.empty()) {
@@ -150,6 +155,7 @@ void loop() {
 
         auto isConfigAp = ssid == CONFIG_AP_SSID;
         WiFi.begin(ssid.c_str(), isConfigAp ? CONFIG_AP_PASSWD : hostInfo->passwd);
+#endif
         while (WiFi.status() != WL_CONNECTED) {
             LOGD("WiFi connecting...");
             delay(500);
@@ -158,7 +164,11 @@ void loop() {
     }
 
     if (not client->connected()) {
+#if TEST_WITH_DESKTOP
+        client->connect(TEST_WITH_DESKTOP_IP, TEST_WITH_DESKTOP_PORT);
+#else
         client->connect(WiFi.gatewayIP(), TCP_PORT);
+#endif
         delay(500);
     }
 }
