@@ -81,6 +81,7 @@ static void initHostFromEEPROM() {
         strcpy(hostInfo->ssidRE, SSID_RE_DEFAULT);
         strcpy(hostInfo->passwd, PASSWORD_DEFAULT);
         EEPROM.commit();
+        LOGD("init hostInfo to EEPROM: ssidRE: %s, passwd: %s", hostInfo->ssidRE, hostInfo->passwd);
     } else {
         LOGD("use hostInfo from EEPROM: ssidRE: %s, passwd: %s", hostInfo->ssidRE, hostInfo->passwd);
     }
@@ -158,23 +159,26 @@ void setup() {
     LOGD("init message callback");
     msgParser.setHostRegexCb([](const std::string& hostRegex, MsgParser::ID_t id) {
         LOGD("HostRegexCb: %s", hostRegex.c_str());
-        wiFiScan.setSSIDEnds(hostRegex);
-        auto str = hostRegex.c_str();
-        // 限定保存长度 注意最后一位\0
-        memcpy(hostInfo->ssidRE, str, std::min(strlen(str) + 1, MAX_SSIDRE_LEN));
-        hostInfo->ssidRE[MAX_SSIDRE_LEN - 1] = '\0';
-        EEPROM.commit();
-
-        sendJasonMsg(MsgParser::makeRsp(id));
+        if (hostRegex.length() > MAX_SSIDRE_LEN - 1) {
+            LOGD("hostRegex too long");
+            sendJasonMsg(MsgParser::makeRsp(id, false));
+        } else {
+            wiFiScan.setSSIDEnds(hostRegex);
+            strcpy(hostInfo->ssidRE, hostRegex.c_str());
+            EEPROM.commit();
+            sendJasonMsg(MsgParser::makeRsp(id, true));
+        }
     });
     msgParser.setHostPasswdCb([](const std::string& passwd, MsgParser::ID_t id) {
         LOGD("HostPasswdCb: %s", passwd.c_str());
-        auto str = passwd.c_str();
-        memcpy(hostInfo->passwd, str, std::min(strlen(str) + 1, MAX_PASSWD_LEN));
-        hostInfo->passwd[MAX_PASSWD_LEN - 1] = '\0';
-        EEPROM.commit();
-
-        sendJasonMsg(MsgParser::makeRsp(id));
+        if (passwd.length() > MAX_SSIDRE_LEN - 1) {
+            LOGD("passwd too long");
+            sendJasonMsg(MsgParser::makeRsp(id, false));
+        } else {
+            strcpy(hostInfo->passwd, passwd.c_str());
+            EEPROM.commit();
+            sendJasonMsg(MsgParser::makeRsp(id, true));
+        }
     });
 }
 
