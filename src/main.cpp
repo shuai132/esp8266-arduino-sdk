@@ -10,11 +10,14 @@ extern "C" {
 #include <EEPROM.h>
 
 #include "config.h"
-#include "log.h"
 #include "PacketProcessor.h"
 #include "MsgParser.h"
 #include "GPIO.h"
 #include "WifiScan.h"
+
+int	myprintf(const char *fmt, ...);
+#define LOG_PRINTF_IMPL(...) myprintf(__VA_ARGS__)
+#include "log.h"
 
 static AsyncClient* client;
 
@@ -89,11 +92,34 @@ static void initHostFromEEPROM() {
 }
 #include "OLED.h"
 
+int	myprintf(const char *fmt, ...) {
+    va_list _va_list;
+    va_start(_va_list, fmt);
+
+    const int bufferSize = 1024;
+    char logBuf[bufferSize];
+    int size = vsnprintf(logBuf, bufferSize, fmt, _va_list);
+    printf(logBuf);
+
+    auto make_empty = [](char& c) {
+        if (c == '\r' || c == '\n') {
+            c = 0;
+        }
+    };
+    make_empty(logBuf[size-1]);
+    make_empty(logBuf[size-2]);
+    make_empty(logBuf[size-3]);
+
+    OLED_Fill(0x00);
+    OLED_ShowChar(0, 0, (unsigned char*)logBuf, 1);
+
+    va_end(_va_list);
+}
+
 void setup() {
     Serial.begin(115200);
     delay(20);
     OLED_Init();
-    OLED_ShowChar(0, 0, (unsigned char*)"Hello World!", 2);
 
     std::set_new_handler([] {
         FATAL("out of memory");

@@ -174,7 +174,7 @@ void OLED_ShowChar(unsigned char x, unsigned char y, unsigned char ch[], unsigne
         case 1: {
             while (ch[j] != '\0') {
                 c = ch[j] - 32;
-                if (x > 126) {
+                if (x > 127 - 8) {
                     x = 0;
                     y++;
                 }
