@@ -49,12 +49,10 @@ static void iniRpc() {
     using namespace RpcCore;
     using String = RpcCore::String;
 
-    conn = std::make_shared<Connection>();
-    rpc = std::make_shared<Rpc>(conn);
-
-    conn->setSendPayloadCb([](std::string payload) {
+    conn = std::make_shared<Connection>([](std::string payload) {
         sendRaw(payload);
     });
+    rpc = std::make_shared<Rpc>(conn);
 
     // 创建Rpc 收发消息
     rpc->setTimerFunc([](uint32_t ms, const MsgDispatcher::TimeoutCb& cb){
@@ -157,7 +155,7 @@ void setup() {
     LOGD("init packetProcessor");
     packetProcessor.setMaxBufferSize(1024);
     packetProcessor.setOnPacketHandle([](uint8_t* data, size_t size) {
-        conn->onPayload(std::string((char*)data, size));
+        conn->onRecvPacket(std::string((char*)data, size));
     });
 
     LOGD("init Rpc");
