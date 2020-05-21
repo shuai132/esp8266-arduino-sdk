@@ -12,7 +12,7 @@
 #define PIN_RELAY           4
 #define PIN_LED             2       // 不要使用它 会影响信号!!!
 
-#define TEST_WITH_DESKTOP           0
+#define TEST_WITH_DESKTOP           1
 #define TEST_WITH_DESKTOP_SSID      "CU_a"
 #define TEST_WITH_DESKTOP_PASSWD    "1029384756"
 #define TEST_WITH_DESKTOP_IP        "192.168.1.4"

@@ -206,3 +206,28 @@ void OLED_ShowChar(unsigned char x, unsigned char y, unsigned char ch[], unsigne
             break;
     }
 }
+
+int	OLED_printf(const char *fmt, ...) {
+    va_list _va_list;
+    va_start(_va_list, fmt);
+
+    const int bufferSize = 1024;
+    char logBuf[bufferSize];
+    int size = vsnprintf(logBuf, bufferSize, fmt, _va_list);
+    Serial.print(logBuf);
+
+    auto make_empty = [](char& c) {
+        if (c == '\r' || c == '\n') {
+            c = 0;
+        }
+    };
+    make_empty(logBuf[size-1]);
+    make_empty(logBuf[size-2]);
+    make_empty(logBuf[size-3]);
+
+    OLED_Fill(0x00);
+    OLED_ShowChar(0, 0, (unsigned char*)logBuf, 1);
+
+    va_end(_va_list);
+    return size;
+}

@@ -26,4 +26,6 @@ void OLED_ShowInt(unsigned char x, unsigned char y, unsigned int Num);
 
 void OLED_ShowChar(unsigned char x, unsigned char y, unsigned char ch[], unsigned char TextSize);
 
+int	OLED_printf(const char *fmt, ...);
+
 #endif

@@ -1,5 +1,3 @@
-#include <algorithm>
-
 extern "C" {
 #include <osapi.h>
 #include <os_type.h>
@@ -16,8 +14,10 @@ extern "C" {
 #include "WifiScan.h"
 #include "OLED.h"
 
-#define LOG_PRINTF_IMPL OLED_printf
+//#define LOG_PRINTF_IMPL OLED_printf
 #include "log.h"
+
+#include "RpcCore.hpp"
 
 static AsyncClient* client;
 
@@ -68,6 +68,7 @@ static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
 
 static void onConnect(void* arg, AsyncClient* client) {
     LOGD("onConnect: host_ip: %s host_port:%d", WiFi.gatewayIP().toString().c_str(), TCP_PORT);
+    OLED_printf("connected: ip: %s", WiFi.gatewayIP().toString().c_str());
     sendMsgByTemplate(Msg::Type::MSG, "hello");
 }
 
@@ -92,42 +93,21 @@ static void initHostFromEEPROM() {
 #endif
 }
 
-int	OLED_printf(const char *fmt, ...) {
-    va_list _va_list;
-    va_start(_va_list, fmt);
-
-    const int bufferSize = 1024;
-    char logBuf[bufferSize];
-    int size = vsnprintf(logBuf, bufferSize, fmt, _va_list);
-    Serial.print(logBuf);
-
-    auto make_empty = [](char& c) {
-        if (c == '\r' || c == '\n') {
-            c = 0;
-        }
-    };
-    make_empty(logBuf[size-1]);
-    make_empty(logBuf[size-2]);
-    make_empty(logBuf[size-3]);
-
-    OLED_Fill(0x00);
-    OLED_ShowChar(0, 0, (unsigned char*)logBuf, 1);
-
-    va_end(_va_list);
-    return size;
-}
-
+#include "FullTest.hpp"
 void setup() {
     Serial.begin(115200);
     delay(20);
-    OLED_Init();
-
     std::set_new_handler([] {
         FATAL("out of memory");
         for(;;) {
             delay(100);
         }
     });
+
+    OLED_Init();
+    OLED_printf("Hello World");
+
+    FullTest();
 
     initHostFromEEPROM();
 
@@ -140,6 +120,7 @@ void setup() {
     client->onConnect(&onConnect, client);
     client->onDisconnect([](void*, AsyncClient*){
         LOGD("client disconnect");
+        OLED_printf("client disconnect", WiFi.gatewayIP().toString().c_str());
     }, client);
 
     LOGD("init packetProcessor");
@@ -180,6 +161,8 @@ void setup() {
             sendJasonMsg(MsgParser::makeRsp(id, true));
         }
     });
+
+    system_print_meminfo();
 }
 
 void loop() {
