@@ -14,9 +14,9 @@ extern "C" {
 #include "MsgParser.h"
 #include "GPIO.h"
 #include "WifiScan.h"
+#include "OLED.h"
 
-int	myprintf(const char *fmt, ...);
-#define LOG_PRINTF_IMPL(...) myprintf(__VA_ARGS__)
+#define LOG_PRINTF_IMPL OLED_printf
 #include "log.h"
 
 static AsyncClient* client;
@@ -91,16 +91,15 @@ static void initHostFromEEPROM() {
     LOGD("use default hostInfo: ssidRE: %s, passwd: %s", hostInfo->ssidRE, hostInfo->passwd);
 #endif
 }
-#include "OLED.h"
 
-int	myprintf(const char *fmt, ...) {
+int	OLED_printf(const char *fmt, ...) {
     va_list _va_list;
     va_start(_va_list, fmt);
 
     const int bufferSize = 1024;
     char logBuf[bufferSize];
     int size = vsnprintf(logBuf, bufferSize, fmt, _va_list);
-    printf(logBuf);
+    Serial.print(logBuf);
 
     auto make_empty = [](char& c) {
         if (c == '\r' || c == '\n') {
@@ -115,6 +114,7 @@ int	myprintf(const char *fmt, ...) {
     OLED_ShowChar(0, 0, (unsigned char*)logBuf, 1);
 
     va_end(_va_list);
+    return size;
 }
 
 void setup() {
