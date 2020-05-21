@@ -166,7 +166,7 @@ void loop() {
     if (not WiFi.isConnected()) {
         WiFi.mode(WIFI_STA);
 
-#if TEST_WITH_DESKTOP
+#ifdef TEST_WITH_DESKTOP
         WiFi.begin(TEST_WITH_DESKTOP_SSID, TEST_WITH_DESKTOP_PASSWD);
 #else
         SCAN:
@@ -190,7 +190,7 @@ void loop() {
     }
 
     if (not client->connected()) {
-#if TEST_WITH_DESKTOP
+#ifdef TEST_WITH_DESKTOP
         client->connect(TEST_WITH_DESKTOP_IP, TEST_WITH_DESKTOP_PORT);
 #else
         client->connect(WiFi.gatewayIP(), TCP_PORT);

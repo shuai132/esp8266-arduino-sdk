@@ -1,1 +1,1 @@
-esp8266-01-arduino-sdk
+esp8266-arduino-sdk

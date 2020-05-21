@@ -23,6 +23,7 @@ void OUT::toggle() {
 
 OUT& OUT::operator=(uint8_t val) {
     set(val);
+    return *this;
 }
 
 }
