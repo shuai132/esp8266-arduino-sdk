@@ -100,8 +100,9 @@ void PacketProcessor::packForeach(const void* data, uint32_t size, const std::fu
     handle(tmp, 2);
 }
 
-void PacketProcessor::feed(const uint8_t* data, size_t size) {
+void PacketProcessor::feed(const void* d, size_t size) {
     if (size == 0) return;
+    const uint8_t* data = static_cast<const uint8_t*>(d);
 //    LOGI("feed size: %u", size);
 //    FOR(i, size) {
 //        LOGI("feed: %02X", data[i]);
@@ -146,6 +147,10 @@ void PacketProcessor::feed(const uint8_t* data, size_t size) {
 
     // 尝试解包
     tryUnpack();
+}
+
+void PacketProcessor::feed(const std::string& payload) {
+    feed(payload.data(), payload.size());
 }
 
 size_t PacketProcessor::getDataPos() {

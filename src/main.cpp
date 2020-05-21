@@ -9,12 +9,9 @@ extern "C" {
 
 #include "config.h"
 #include "PacketProcessor.h"
-#include "MsgParser.h"
 #include "GPIO.h"
 #include "WifiScan.h"
 #include "OLED.h"
-
-//#define LOG_PRINTF_IMPL OLED_printf
 #include "log.h"
 
 #include "RpcCore.hpp"
@@ -22,7 +19,8 @@ extern "C" {
 static AsyncClient* client;
 
 static PacketProcessor packetProcessor(true);
-static MsgParser msgParser;
+static std::shared_ptr<RpcCore::Connection> conn;
+static std::shared_ptr<RpcCore::Rpc> rpc;
 
 static gpio::OUT relay(PIN_RELAY);
 
@@ -39,22 +37,59 @@ struct HostInfo {
 
 static HostInfo* hostInfo;
 
-static void sendRaw(const std::string& data) {
-    client->write(data.data(), data.size());
-}
-
 static void sendRaw(const void* data, size_t size) {
     client->write((char*)data, size);
 }
 
-static void sendJasonMsg(const std::string& jsonMsg) {
-    auto payload = packetProcessor.pack(jsonMsg);
-    sendRaw(payload.data(), payload.size());
+static void sendRaw(const std::string& data) {
+    sendRaw(data.data(), data.size());
 }
 
-static void sendMsgByTemplate(const std::string& type, const std::string& msg) {
-    auto jsonMsg = msgParser.makeMsg(type, msg);
-    sendJasonMsg(jsonMsg);
+static void iniRpc() {
+    using namespace RpcCore;
+    using String = RpcCore::String;
+
+    conn = std::make_shared<Connection>();
+    rpc = std::make_shared<Rpc>(conn);
+
+    conn->setSendPayloadCb([](std::string payload) {
+        sendRaw(payload);
+    });
+
+    // 创建Rpc 收发消息
+    rpc->setTimerFunc([](uint32_t ms, const MsgDispatcher::TimeoutCb& cb){
+        // todo
+    });
+
+    rpc->subscribe<Value<bool>>("relay/state", [](Value<bool> state) {
+        LOGD("relay/state: %d", state.value);
+        relay.set(state.value);
+    });
+
+    rpc->subscribe<String, Value<bool>>("setHostRege", [](String hostRegex) {
+        LOGD("setHostRege: %s", hostRegex.c_str());
+        if (hostRegex.length() > MAX_SSIDRE_LEN - 1) {
+            LOGD("hostRegex too long");
+            return false;
+        } else {
+            wiFiScan.setSSIDEnds(hostRegex);
+            strcpy(hostInfo->ssidRE, hostRegex.c_str());
+            EEPROM.commit();
+            return true;
+        }
+    });
+
+    rpc->subscribe<String, Value<bool>>("setHostPasswd", [](String passwd) {
+        LOGD("setHostPasswd: %s", passwd.c_str());
+        if (passwd.length() > MAX_SSIDRE_LEN - 1) {
+            LOGD("passwd too long");
+            return false;
+        } else {
+            strcpy(hostInfo->passwd, passwd.c_str());
+            EEPROM.commit();
+            return true;
+        }
+    });
 }
 
 static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
@@ -69,7 +104,6 @@ static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
 static void onConnect(void* arg, AsyncClient* client) {
     LOGD("onConnect: host_ip: %s host_port:%d", WiFi.gatewayIP().toString().c_str(), TCP_PORT);
     OLED_printf("connected: ip: %s", WiFi.gatewayIP().toString().c_str());
-    sendMsgByTemplate(Msg::Type::MSG, "hello");
 }
 
 static void initHostFromEEPROM() {
@@ -93,7 +127,6 @@ static void initHostFromEEPROM() {
 #endif
 }
 
-#include "FullTest.hpp"
 void setup() {
     Serial.begin(115200);
     delay(20);
@@ -106,8 +139,6 @@ void setup() {
 
     OLED_Init();
     OLED_printf("Hello World");
-
-    FullTest();
 
     initHostFromEEPROM();
 
@@ -126,43 +157,11 @@ void setup() {
     LOGD("init packetProcessor");
     packetProcessor.setMaxBufferSize(1024);
     packetProcessor.setOnPacketHandle([](uint8_t* data, size_t size) {
-        msgParser.parser(std::string((char*)data, size));//todo: performance
+        conn->onPayload(std::string((char*)data, size));
     });
 
-    LOGD("init msgParser");
-    msgParser.setRelayCb([](bool on, MsgParser::ID_t id) {
-        LOGD("relay pin set to: %d", on);
-        relay.set(on);
-
-        sendJasonMsg(MsgParser::makeRsp(id));
-    });
-
-    LOGD("init message callback");
-    msgParser.setHostRegexCb([](const std::string& hostRegex, MsgParser::ID_t id) {
-        LOGD("HostRegexCb: %s", hostRegex.c_str());
-        if (hostRegex.length() > MAX_SSIDRE_LEN - 1) {
-            LOGD("hostRegex too long");
-            sendJasonMsg(MsgParser::makeRsp(id, false));
-        } else {
-            wiFiScan.setSSIDEnds(hostRegex);
-            strcpy(hostInfo->ssidRE, hostRegex.c_str());
-            EEPROM.commit();
-            sendJasonMsg(MsgParser::makeRsp(id, true));
-        }
-    });
-    msgParser.setHostPasswdCb([](const std::string& passwd, MsgParser::ID_t id) {
-        LOGD("HostPasswdCb: %s", passwd.c_str());
-        if (passwd.length() > MAX_SSIDRE_LEN - 1) {
-            LOGD("passwd too long");
-            sendJasonMsg(MsgParser::makeRsp(id, false));
-        } else {
-            strcpy(hostInfo->passwd, passwd.c_str());
-            EEPROM.commit();
-            sendJasonMsg(MsgParser::makeRsp(id, true));
-        }
-    });
-
-    system_print_meminfo();
+    LOGD("init Rpc");
+    iniRpc();
 }
 
 void loop() {
