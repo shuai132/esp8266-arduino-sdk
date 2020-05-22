@@ -13,18 +13,19 @@ extern "C" {
 #include "WifiScan.h"
 #include "OLED.h"
 #include "log.h"
-
 #include "RpcCore.hpp"
+#include "SimpleTimer/SimpleTimer.h"
+#include "AppMsg.h"
+
+static gpio::OUT relay(PIN_RELAY, HIGH);
+static SimpleTimer timer;
 
 static AsyncClient* client;
+static WiFiScan wiFiScan;
 
 static PacketProcessor packetProcessor(true);
 static std::shared_ptr<RpcCore::Connection> conn;
 static std::shared_ptr<RpcCore::Rpc> rpc;
-
-static gpio::OUT relay(PIN_RELAY);
-
-static WiFiScan wiFiScan;
 
 const size_t MAX_SSIDRE_LEN = 50 + 1;
 const size_t MAX_PASSWD_LEN = 16 + 1;
@@ -49,22 +50,37 @@ static void iniRpc() {
     using namespace RpcCore;
     using String = RpcCore::String;
 
-    conn = std::make_shared<Connection>([](std::string payload) {
+    // 初始化
+    conn = std::make_shared<Connection>([](const std::string& payload) {
         sendRaw(payload);
     });
     rpc = std::make_shared<Rpc>(conn);
-
-    // 创建Rpc 收发消息
-    rpc->setTimerFunc([](uint32_t ms, const MsgDispatcher::TimeoutCb& cb){
-        // todo
+    rpc->setTimerFunc([](uint32_t ms, MsgDispatcher::TimeoutCb cb) {
+        timer.setTimeout(ms, std::move(cb));
     });
 
-    rpc->subscribe<Value<bool>>("relay/state", [](Value<bool> state) {
-        LOGD("relay/state: %d", state.value);
+    rpc->subscribe<Raw<bool>>("setRelay", [](Raw<bool> state) {
+        LOGD("setRelay: %d", state.value);
         relay.set(state.value);
     });
+    rpc->subscribe<Raw<bool>>("getRelay", []() {
+        auto val = relay.value(true);
+        LOGD("getRelay: %d", val);
+        return val;
+    });
+    // 设置继电器维持某个电平多久
+    using Action = RpcCore::Struct<RelayAction>;
+    rpc->subscribe<Action>("createRelayAction", [](const Action& msg) {
+        const auto& action = msg.value;
+        LOGD("createRelayAction: start: %d, ms:%d, end:%d", action.valStart, action.delayMs, action.valEnd);
+        relay.set(action.valStart);
+        timer.setTimeout(action.delayMs, [action]{
+            if (relay.value(true) == action.valEnd) return;
+            relay.set(action.valEnd);
+        });
+    });
 
-    rpc->subscribe<String, Value<bool>>("setHostRege", [](String hostRegex) {
+    rpc->subscribe<String, Raw<bool>>("setHostRege", [](const String& hostRegex) {
         LOGD("setHostRege: %s", hostRegex.c_str());
         if (hostRegex.length() > MAX_SSIDRE_LEN - 1) {
             LOGD("hostRegex too long");
@@ -77,7 +93,7 @@ static void iniRpc() {
         }
     });
 
-    rpc->subscribe<String, Value<bool>>("setHostPasswd", [](String passwd) {
+    rpc->subscribe<String, Raw<bool>>("setHostPasswd", [](const String& passwd) {
         LOGD("setHostPasswd: %s", passwd.c_str());
         if (passwd.length() > MAX_SSIDRE_LEN - 1) {
             LOGD("passwd too long");
@@ -149,7 +165,7 @@ void setup() {
     client->onConnect(&onConnect, client);
     client->onDisconnect([](void*, AsyncClient*){
         LOGD("client disconnect");
-        OLED_printf("client disconnect", WiFi.gatewayIP().toString().c_str());
+        OLED_printf("onDisconnect: %s", WiFi.gatewayIP().toString().c_str());
     }, client);
 
     LOGD("init packetProcessor");
@@ -163,6 +179,8 @@ void setup() {
 }
 
 void loop() {
+    timer.run();
+
     if (not WiFi.isConnected()) {
         WiFi.mode(WIFI_STA);
 

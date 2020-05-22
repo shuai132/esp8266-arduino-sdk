@@ -7,11 +7,11 @@ namespace gpio {
 
 class OUT : noncopyable {
 public:
-    explicit OUT(uint8_t pin);
+    explicit OUT(uint8_t pin, uint8_t val = LOW);
 
 public:
     void set(uint8_t val);
-    uint8_t value() const;
+    uint8_t value(bool read = true);
 
     void toggle();
 
@@ -19,7 +19,7 @@ public:
 
 private:
     uint8_t _pin;
-    bool _val;
+    uint8_t _val;
 };
 
 }

@@ -7,3 +7,6 @@
 [submodule "modules/RpcCore"]
 	path = modules/RpcCore
 	url = https://github.com/shuai132/RpcCore.git
+[submodule "src/SimpleTimer"]
+	path = src/SimpleTimer
+	url = https://github.com/schinken/SimpleTimer
