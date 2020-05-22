@@ -11,11 +11,19 @@ extern "C" {
 #include "PacketProcessor.h"
 #include "GPIO.h"
 #include "WifiScan.h"
-#include "OLED.h"
 #include "log.h"
 #include "RpcCore.hpp"
 #include "SimpleTimer/SimpleTimer.h"
 #include "AppMsg.h"
+
+#ifdef USE_OLED
+#include "OLED.h"
+#undef  PIN_RELAY
+#define PIN_RELAY                   -1
+#else
+#define OLED_Init()                 ((void)0)
+#define OLED_printf(fmt, ...)       ((void)0)
+#endif
 
 static gpio::OUT relay(PIN_RELAY, LOW);
 static SimpleTimer timer;
@@ -40,10 +48,6 @@ static HostInfo* hostInfo;
 
 static void sendRaw(const void* data, size_t size) {
     client->write((char*)data, size);
-}
-
-static void sendRaw(const std::string& data) {
-    sendRaw(data.data(), data.size());
 }
 
 static void iniRpc() {
