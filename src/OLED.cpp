@@ -214,7 +214,10 @@ int	OLED_printf(const char *fmt, ...) {
     const int bufferSize = 1024;
     char logBuf[bufferSize];
     int size = vsnprintf(logBuf, bufferSize, fmt, _va_list);
-    Serial.print(logBuf);
+
+    // 串口回显
+    Serial.print("[OLED]: ");
+    Serial.println(logBuf);
 
     auto make_empty = [](char& c) {
         if (c == '\r' || c == '\n') {

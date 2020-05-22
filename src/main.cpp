@@ -17,7 +17,7 @@ extern "C" {
 #include "SimpleTimer/SimpleTimer.h"
 #include "AppMsg.h"
 
-static gpio::OUT relay(PIN_RELAY, HIGH);
+static gpio::OUT relay(PIN_RELAY, LOW);
 static SimpleTimer timer;
 
 static AsyncClient* client;
@@ -52,27 +52,28 @@ static void iniRpc() {
 
     // 初始化
     conn = std::make_shared<Connection>([](const std::string& payload) {
-        sendRaw(payload);
+        auto packet = packetProcessor.pack(payload);
+        sendRaw(packet.data(), packet.size());
     });
     rpc = std::make_shared<Rpc>(conn);
-    rpc->setTimerFunc([](uint32_t ms, MsgDispatcher::TimeoutCb cb) {
+    rpc->setTimerImpl([](uint32_t ms, MsgDispatcher::TimeoutCb cb) {
         timer.setTimeout(ms, std::move(cb));
     });
 
     rpc->subscribe<Raw<bool>>("setRelay", [](Raw<bool> state) {
-        LOGD("setRelay: %d", state.value);
+        OLED_printf("setRelay: %d", state.value);
         relay.set(state.value);
     });
     rpc->subscribe<Raw<bool>>("getRelay", []() {
         auto val = relay.value(true);
-        LOGD("getRelay: %d", val);
+        OLED_printf("getRelay: %d", val);
         return val;
     });
     // 设置继电器维持某个电平多久
     using Action = RpcCore::Struct<RelayAction>;
     rpc->subscribe<Action>("createRelayAction", [](const Action& msg) {
         const auto& action = msg.value;
-        LOGD("createRelayAction: start: %d, ms:%d, end:%d", action.valStart, action.delayMs, action.valEnd);
+        OLED_printf("createRelayAction: start: %d, ms:%d, end:%d", action.valStart, action.delayMs, action.valEnd);
         relay.set(action.valStart);
         timer.setTimeout(action.delayMs, [action]{
             if (relay.value(true) == action.valEnd) return;
@@ -81,7 +82,7 @@ static void iniRpc() {
     });
 
     rpc->subscribe<String, Raw<bool>>("setHostRege", [](const String& hostRegex) {
-        LOGD("setHostRege: %s", hostRegex.c_str());
+        OLED_printf("setHostRege: %s", hostRegex.c_str());
         if (hostRegex.length() > MAX_SSIDRE_LEN - 1) {
             LOGD("hostRegex too long");
             return false;
@@ -94,7 +95,7 @@ static void iniRpc() {
     });
 
     rpc->subscribe<String, Raw<bool>>("setHostPasswd", [](const String& passwd) {
-        LOGD("setHostPasswd: %s", passwd.c_str());
+        OLED_printf("setHostPasswd: %s", passwd.c_str());
         if (passwd.length() > MAX_SSIDRE_LEN - 1) {
             LOGD("passwd too long");
             return false;
