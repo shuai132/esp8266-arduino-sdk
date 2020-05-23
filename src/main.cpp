@@ -22,7 +22,7 @@ extern "C" {
 #define PIN_RELAY                   -1
 #else
 #define OLED_Init()                 ((void)0)
-#define OLED_printf(fmt, ...)       ((void)0)
+#define OLED_printf(fmt, ...)       LOGT("OLED", fmt, ##__VA_ARGS__)
 #endif
 
 static gpio::OUT relay(PIN_RELAY, LOW);
