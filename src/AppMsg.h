@@ -10,4 +10,9 @@ struct RelayAction {
     uint8_t valEnd;
 };
 
+struct DeviceInfo {
+    uint32_t chipId;
+    uint8_t boardId;
+};
+
 #pragma pack(pop)

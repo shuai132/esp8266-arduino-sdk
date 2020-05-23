@@ -20,9 +20,10 @@ extern "C" {
 #include "OLED.h"
 #undef  PIN_RELAY
 #define PIN_RELAY                   -1
+#undef  LOGI
+#define LOGI(fmt, ...)              OLED_printf(fmt, ##__VA_ARGS__)
 #else
 #define OLED_Init()                 ((void)0)
-#define OLED_printf(fmt, ...)       LOGT("OLED", fmt, ##__VA_ARGS__)
 #endif
 
 static gpio::OUT relay(PIN_RELAY, LOW);
@@ -42,12 +43,27 @@ struct HostInfo {
     uint16_t configed;
     char ssidRE[MAX_SSIDRE_LEN];
     char passwd[MAX_PASSWD_LEN];
+    uint8_t boardId;
 };
 
 static HostInfo* hostInfo;
 
-static void sendRaw(const void* data, size_t size) {
-    client->write((char*)data, size);
+static void initTcpClient() {
+    client = new AsyncClient;
+    client->onData([](void* arg, AsyncClient* client, void *data, size_t len) {
+        LOGD("handleData: from: %s, len: %u, data: %s"
+        , client->remoteIP().toString().c_str()
+        , len
+        , std::string((char*)data, std::min(len, 10U)).c_str()
+        );
+        packetProcessor.feed((uint8_t*)data, len);
+    }, client);
+    client->onConnect([](void* arg, AsyncClient* client) {
+        LOGI("onConnect: ip: %s", WiFi.gatewayIP().toString().c_str());
+    }, client);
+    client->onDisconnect([](void*, AsyncClient*){
+        LOGI("onDisconnect: %s", WiFi.gatewayIP().toString().c_str());
+    }, client);
 }
 
 static void iniRpc() {
@@ -57,7 +73,7 @@ static void iniRpc() {
     // 初始化
     conn = std::make_shared<Connection>([](const std::string& payload) {
         auto packet = packetProcessor.pack(payload);
-        sendRaw(packet.data(), packet.size());
+        client->write((char*)packet.data(), packet.size());
     });
     rpc = std::make_shared<Rpc>(conn);
     rpc->setTimerImpl([](uint32_t ms, MsgDispatcher::TimeoutCb cb) {
@@ -65,19 +81,19 @@ static void iniRpc() {
     });
 
     rpc->subscribe<Raw<bool>>("setRelay", [](Raw<bool> state) {
-        OLED_printf("setRelay: %d", state.value);
+        LOGI("setRelay: %d", state.value);
         relay.set(state.value);
     });
     rpc->subscribe<Raw<bool>>("getRelay", []() {
         auto val = relay.value(true);
-        OLED_printf("getRelay: %d", val);
+        LOGI("getRelay: %d", val);
         return val;
     });
     // 设置继电器维持某个电平多久
     using Action = RpcCore::Struct<RelayAction>;
     rpc->subscribe<Action>("createRelayAction", [](const Action& msg) {
         const auto& action = msg.value;
-        OLED_printf("createRelayAction: start: %d, ms:%d, end:%d", action.valStart, action.delayMs, action.valEnd);
+        LOGI("createRelayAction: start: %d, ms:%d, end:%d", action.valStart, action.delayMs, action.valEnd);
         relay.set(action.valStart);
         timer.setTimeout(action.delayMs, [action]{
             if (relay.value(true) == action.valEnd) return;
@@ -86,7 +102,7 @@ static void iniRpc() {
     });
 
     rpc->subscribe<String, Raw<bool>>("setHostRege", [](const String& hostRegex) {
-        OLED_printf("setHostRege: %s", hostRegex.c_str());
+        LOGI("setHostRege: %s", hostRegex.c_str());
         if (hostRegex.length() > MAX_SSIDRE_LEN - 1) {
             LOGD("hostRegex too long");
             return false;
@@ -99,7 +115,7 @@ static void iniRpc() {
     });
 
     rpc->subscribe<String, Raw<bool>>("setHostPasswd", [](const String& passwd) {
-        OLED_printf("setHostPasswd: %s", passwd.c_str());
+        LOGI("setHostPasswd: %s", passwd.c_str());
         if (passwd.length() > MAX_SSIDRE_LEN - 1) {
             LOGD("passwd too long");
             return false;
@@ -109,20 +125,15 @@ static void iniRpc() {
             return true;
         }
     });
-}
 
-static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
-    LOGD("handleData: from: %s, len: %u, data: %s"
-            , client->remoteIP().toString().c_str()
-            , len
-            , std::string((char*)data, std::min(len, 10U)).c_str()
-            );
-    packetProcessor.feed((uint8_t*)data, len);
-}
-
-static void onConnect(void* arg, AsyncClient* client) {
-    LOGD("onConnect: host_ip: %s host_port:%d", WiFi.gatewayIP().toString().c_str(), TCP_PORT);
-    OLED_printf("connected: ip: %s", WiFi.gatewayIP().toString().c_str());
+    using Info = RpcCore::Struct<DeviceInfo>;
+    rpc->subscribe<Info>("setDeviceInfo", [](const Info& info) {
+        hostInfo->boardId = info.value.boardId;
+        EEPROM.commit();
+    });
+    rpc->subscribe<Info>("getDeviceInfo", [] {
+        return DeviceInfo{system_get_chip_id(), hostInfo->boardId};
+    });
 }
 
 static void initHostFromEEPROM() {
@@ -157,21 +168,12 @@ void setup() {
     });
 
     OLED_Init();
-    OLED_printf("Hello World");
+    LOGI("Hello World");
 
     initHostFromEEPROM();
 
     LOGD("init wiFiScan");
     wiFiScan.setSSIDEnds(hostInfo->ssidRE);
-
-    LOGD("init client");
-    client = new AsyncClient;
-    client->onData(&handleData, client);
-    client->onConnect(&onConnect, client);
-    client->onDisconnect([](void*, AsyncClient*){
-        LOGD("client disconnect");
-        OLED_printf("onDisconnect: %s", WiFi.gatewayIP().toString().c_str());
-    }, client);
 
     LOGD("init packetProcessor");
     packetProcessor.setMaxBufferSize(1024);
@@ -181,6 +183,9 @@ void setup() {
 
     LOGD("init Rpc");
     iniRpc();
+
+    LOGD("init Client");
+    initTcpClient();
 }
 
 void loop() {
