@@ -134,6 +134,9 @@ static void iniRpc() {
     rpc->subscribe<Info>("getDeviceInfo", [] {
         return DeviceInfo{system_get_chip_id(), hostInfo->boardId};
     });
+    rpc->subscribe<Raw<int8_t>>("getRssi", [] {
+        return Raw<int8_t>{wifi_station_get_rssi()};
+    });
 }
 
 static void initHostFromEEPROM() {
@@ -162,9 +165,6 @@ void setup() {
     delay(20);
     std::set_new_handler([] {
         FATAL("out of memory");
-        for(;;) {
-            delay(100);
-        }
     });
 
     OLED_Init();
