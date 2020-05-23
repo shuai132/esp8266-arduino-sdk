@@ -1,0 +1,50 @@
+name: Ubuntu
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  Ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Submodules
+        run: git submodule update --init --recursive
+
+      - name: Cache
+        uses: actions/cache@v1
+        env:
+          cache-name: cache-pio-modules
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: |
+          pip install wheel
+          pip install -U platformio
+          platformio update
+
+      - name: Build
+        run: |
+          platformio run
