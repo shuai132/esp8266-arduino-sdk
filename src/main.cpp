@@ -125,6 +125,14 @@ static void iniRpc() {
             return true;
         }
     });
+    rpc->subscribe<String>("getHostRege", [] {
+        LOGD("getHostRege: %s", hostInfo->ssidRE);
+        return hostInfo->ssidRE;
+    });
+    rpc->subscribe<String>("getHostPasswd", [] {
+        LOGD("getHostPasswd: %s", hostInfo->passwd);
+        return hostInfo->passwd;
+    });
 
     using Info = RpcCore::Struct<DeviceInfo>;
     rpc->subscribe<Info>("setDeviceInfo", [](const Info& info) {
