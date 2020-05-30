@@ -56,7 +56,7 @@ static void initTcpClient() {
         , len
         , std::string((char*)data, std::min(len, 10U)).c_str()
         );
-        packetProcessor.feed((uint8_t*)data, len);
+        packetProcessor.feed(data, len);
     }, client);
     client->onConnect([](void* arg, AsyncClient* client) {
         LOGI("onConnect: ip: %s", WiFi.gatewayIP().toString().c_str());

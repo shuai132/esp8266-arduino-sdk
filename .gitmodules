@@ -10,3 +10,6 @@
 [submodule "src/SimpleTimer"]
 	path = src/SimpleTimer
 	url = https://github.com/schinken/SimpleTimer
+[submodule "lib/PacketProcessor"]
+	path = lib/PacketProcessor
+	url = https://github.com/shuai132/PacketProcessor.git
