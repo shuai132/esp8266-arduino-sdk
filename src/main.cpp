@@ -72,8 +72,10 @@ static void iniRpc() {
 
     // 初始化
     conn = std::make_shared<Connection>([](const std::string& payload) {
-        auto packet = packetProcessor.pack(payload);
-        client->write((char*)packet.data(), packet.size());
+        packetProcessor.packForeach(payload.data(), payload.size(),
+                                    [](uint8_t* data, size_t size) {
+                                        client->write((char*)data, size);
+                                    });
     });
     rpc = std::make_shared<Rpc>(conn);
     rpc->setTimerImpl([](uint32_t ms, MsgDispatcher::TimeoutCb cb) {
