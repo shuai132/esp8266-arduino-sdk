@@ -1,6 +1,6 @@
 #pragma once
 
-#define SSID_RE_DEFAULT     "_relay"
+#define SSID_RE_DEFAULT     "JWDGFX"
 #define PASSWORD_DEFAULT    "12345678"
 #define TRY_USE_EEPROM_INFO 1
 
