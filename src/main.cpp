@@ -78,7 +78,7 @@ static void iniRpc() {
                                     });
     });
     rpc = std::make_shared<Rpc>(conn);
-    rpc->setTimerImpl([](uint32_t ms, MsgDispatcher::TimeoutCb cb) {
+    rpc->setTimerImpl([](uint32_t ms, Rpc::TimeoutCb cb) {
         timer.setTimeout(ms, std::move(cb));
     });
 
