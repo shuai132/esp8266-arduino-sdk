@@ -36,7 +36,7 @@ std::string WiFiScan::scan() {
 
         LOGD("item: %d, ssid: %s, RSSI: %d", item, ssid.c_str(), RSSI);
         std::string ssidStr(ssid.c_str());
-        if (ssid.endsWith(_ssidEnds.c_str())) {
+        if (not _ssidEnds.empty() && ssid.endsWith(_ssidEnds.c_str())) {
             LOGD("find match ap: %s", ssidStr.c_str());
             onMatchAP(ssidStr);
             return ssidStr;
