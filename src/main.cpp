@@ -220,14 +220,20 @@ void loop() {
         auto isConfigAp = ssid == CONFIG_AP_SSID;
         WiFi.begin(ssid.c_str(), isConfigAp ? CONFIG_AP_PASSWD : hostInfo->passwd);
 #endif
-        while (WiFi.status() != WL_CONNECTED) {
+        int retryCount = 10;
+        while (--retryCount && WiFi.status() != WL_CONNECTED) {
             LOGD("WiFi connecting...");
             delay(500);
+        }
+        if (retryCount == 0) {
+            ESP.reset();
+            LOGD("ESP.reset()");
         }
         LOGD("gatewayIP: %s", WiFi.gatewayIP().toString().c_str());
     }
 
-    if (not client->connected()) {
+    if (WiFi.isConnected() && not client->connected()) {
+        LOGD("client->connect...");
 #ifdef TEST_WITH_DESKTOP
         client->connect(TEST_WITH_DESKTOP_IP, TEST_WITH_DESKTOP_PORT);
 #else
