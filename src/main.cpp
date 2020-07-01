@@ -95,11 +95,11 @@ static void iniRpc() {
     using Action = RpcCore::Struct<RelayAction>;
     rpc->subscribe<Action>("createRelayAction", [](const Action& msg) {
         const auto& action = msg.value;
-        LOGI("createRelayAction: start: %d, ms:%d, end:%d", action.valStart, action.delayMs, action.valEnd);
-        relay.set(action.valStart);
+        LOGI("createRelayAction: start: %d, ms:%d, end:%d", action.volFrom, action.delayMs, action.volTo);
+        relay.set(action.volFrom);
         timer.setTimeout(action.delayMs, [action]{
-            if (relay.value(true) == action.valEnd) return;
-            relay.set(action.valEnd);
+            if (relay.value(true) == action.volTo) return;
+            relay.set(action.volTo);
         });
     });
 

@@ -5,9 +5,9 @@
 #pragma pack(push, 4)
 
 struct RelayAction {
-    uint8_t valStart;
+    uint8_t volFrom;
     uint32_t delayMs;
-    uint8_t valEnd;
+    uint8_t volTo;
 };
 
 struct DeviceInfo {
