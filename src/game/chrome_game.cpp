@@ -1,6 +1,5 @@
 #include "chrome_game.h"
 #include "game_engine.hpp"
-#include "screen/ConsoleScreen.h"
 #include "screen/OLEDScreen.h"
 
 class Dragon : public Spirit {
@@ -37,7 +36,7 @@ public:
         Spirit::update(info);
         pos.x--;
         if (pos.x + bitmap.width < 0) {
-            pos.x = info.fb->width - bitmap.width;
+            pos.x = info.fb->width() - bitmap.width;
         }
     }
 

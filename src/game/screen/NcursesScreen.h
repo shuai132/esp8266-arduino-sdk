@@ -10,8 +10,8 @@ struct NcursesScreen : public Screen {
         noecho();
         curs_set(0);
     }
-    void onDraw(FrameBuffer* frameBuffer) override {
-        auto& fb = *frameBuffer;
+    void onDraw(Canvas* canvas) override {
+        auto& fb = *canvas;
         auto& height = fb.height;
         auto& width = fb.width;
         for(int h = 0; h < height; h++) {
