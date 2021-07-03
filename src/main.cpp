@@ -170,6 +170,9 @@ static void initHostFromEEPROM() {
 #endif
 }
 
+#include "game/chrome_game.h"
+//#include "test.h"
+
 void setup() {
     Serial.begin(115200);
     delay(20);
@@ -179,6 +182,7 @@ void setup() {
 
     OLED_Init();
     LOGI("Hello World");
+    game_task();
 
     initHostFromEEPROM();
 
@@ -205,6 +209,14 @@ void loop() {
         WiFi.mode(WIFI_STA);
 
 #ifdef TEST_WITH_DESKTOP
+        auto ssid = wiFiScan.scan();
+        if (ssid.empty()) {
+            LOGD("scan empty");
+            delay(1000);
+        }
+
+        LOGD("try connect to: %s", ssid.c_str());
+
         WiFi.begin(TEST_WITH_DESKTOP_SSID, TEST_WITH_DESKTOP_PASSWD);
 #else
         SCAN:

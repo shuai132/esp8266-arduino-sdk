@@ -1,31 +1,6 @@
-#ifndef __OLED_H__
-#define __OLED_H__
+#pragma once
 
+#include <Adafruit_SSD1306.h>
 
-#define Brightness      0xCF
-#define X_WIDTH         128
-#define Y_WIDTH         64
-
-void IIC_Start();
-
-void IIC_Stop();
-
-void Write_IIC_Byte(unsigned char IIC_Byte);
-
-void OLED_WrDat(unsigned char IIC_Data);
-
-void OLED_WrCmd(unsigned char IIC_Command);
-
-void OLED_Set_Pos(unsigned char x, unsigned char y);
-
-void OLED_Fill(unsigned char bmp_dat);
-
-void OLED_Init(void);
-
-void OLED_ShowInt(unsigned char x, unsigned char y, unsigned int Num);
-
-void OLED_ShowChar(unsigned char x, unsigned char y, unsigned char ch[], unsigned char TextSize);
-
-int	OLED_printf(const char *fmt, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
-
-#endif
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+extern Adafruit_SSD1306 display;
