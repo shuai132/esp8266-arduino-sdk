@@ -8,14 +8,18 @@ public:
         bitmap.width = 3;
         bitmap.height = 3;
         bitmap.data = reinterpret_cast<byte*>(bitmapDragon);
-        pos.x = 2;
-        pos.y = 2;
+        pos.x = 10;
+        pos.y = 20;
     }
     void update(FrameInfo info) override {
         Spirit::update(info);
-        if (--pos.y < 0) {
-            pos.y = 2;
+        if (--pos.y < 5) {
+            pos.y = 20;
         }
+    }
+
+    void onDraw(Canvas *fb) override {
+        fb->drawCircle(pos.x, pos.y, 5, 1);
     }
 
     byte bitmapDragon[3][3] = {
@@ -40,6 +44,10 @@ public:
         }
     }
 
+    void onDraw(Canvas *fb) override {
+        fb->drawRect(pos.x, fb->height() - 13, 6, 13, 1);
+    }
+
     byte bitmapTree[3][2] = {
             {1, 1},
             {1, 1},
@@ -53,20 +61,25 @@ public:
         dragon = std::make_shared<Dragon>();
         tree1 = std::make_shared<Tree>();
         tree2 = std::make_shared<Tree>();
+        tree3 = std::make_shared<Tree>();
+        tree4 = std::make_shared<Tree>();
         addChild(dragon);
         addChild(tree1);
         addChild(tree2);
+        addChild(tree3);
+        addChild(tree4);
 
-        tree1->pos.x = 3;
-        tree1->pos.y = 5;
-
-        tree2->pos.x = 16;
-        tree2->pos.y = 5;
+        tree1->pos.x = 0;
+        tree2->pos.x = 32*1;
+        tree3->pos.x = 32*2;
+        tree4->pos.x = 32*3;
     }
 
     std::shared_ptr<Dragon> dragon;
     std::shared_ptr<Tree> tree1;
     std::shared_ptr<Tree> tree2;
+    std::shared_ptr<Tree> tree3;
+    std::shared_ptr<Tree> tree4;
 };
 
 void game_task() {

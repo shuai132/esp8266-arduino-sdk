@@ -107,7 +107,7 @@ struct Screen : noncopyable {
 
 class Scene : public Node {
 public:
-    void update(float deltaMs) {
+    void doUpdate(float deltaMs) {
         assert(screen);
         screen->onClear();
         onUpdate(deltaMs);
@@ -121,9 +121,6 @@ protected:
 
 public:
     std::shared_ptr<Screen> screen;
-
-private:
-    Canvas* _canvas;
 };
 
 class Director : noncopyable {
@@ -132,7 +129,7 @@ public:
         _fps = fps;
         _intervalUs = 1000000.f / _fps;
         _running = true;
-        _lastStartTime = std::chrono::steady_clock::now();
+        _lastStartTime = micros();
         while(_running){
             loop();
         }
@@ -143,11 +140,16 @@ public:
 
 private:
     void loop() {
-        auto now = std::chrono::steady_clock::now;
-        auto startTime = now();
-        scene->update(float(1) / 1000.f);
-        auto endTime = now();
-        delayMicroseconds(_intervalUs);
+        auto startTime = micros();
+        scene->doUpdate(float(1) / 1000.f);
+        auto endTime = micros();
+        _lastStartTime = endTime;
+
+        auto deltaUs = endTime - startTime;
+        int64_t shouldDelayUs = _intervalUs - deltaUs;
+        if (shouldDelayUs > 0) {
+            delayMicroseconds(shouldDelayUs);
+        }
     }
 
 public:
@@ -158,5 +160,5 @@ private:
     uint16_t _fps{};
     uint32_t _intervalUs{};
 
-    std::chrono::steady_clock::time_point _lastStartTime;
+    unsigned long _lastStartTime;
 };
