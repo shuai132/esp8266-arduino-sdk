@@ -1,40 +1,56 @@
 #include "chrome_game.h"
 #include "game_engine.hpp"
 #include "screen/OLEDScreen.h"
+#include "img/dragon.h"
+#include "img/tree.h"
 
 class Dragon : public Spirit {
 public:
     Dragon() {
-        bitmap.width = 3;
-        bitmap.height = 3;
-        bitmap.data = reinterpret_cast<byte*>(bitmapDragon);
+        bitmap.width = dragon_width;
+        bitmap.height = dragon_height;
+        bitmap.data = dragon_data;
         pos.x = 10;
-        pos.y = 20;
+        pos.y = SCREEN_HEIGHT - dragon_height;
     }
     void update(FrameInfo info) override {
         Spirit::update(info);
-        if (--pos.y < 5) {
-            pos.y = 20;
+        // update step
+        if (bitmap.data == dragon_data_1) {
+            bitmap.data = dragon_data_2;
+        } else {
+            bitmap.data = dragon_data_1;
+        }
+        auto shouldMovePix = [&]()->int{
+            return 0;
+            auto pix = info.deltaMs*speed/1000;
+            return pix > 1 ? pix : 1;
+        };
+        if (up) {
+            pos.y -= shouldMovePix();
+            if (pos.y < 0) {
+                up = false;
+            }
+        }
+        if (!up) {
+            pos.y += shouldMovePix();
+            if (pos.y > SCREEN_HEIGHT - bitmap.height) {
+                up = true;//todo
+            }
         }
     }
 
-    void onDraw(Canvas *fb) override {
-        fb->drawCircle(pos.x, pos.y, 5, 1);
-    }
-
-    byte bitmapDragon[3][3] = {
-            {0, 1, 0},
-            {1, 1, 1},
-            {0, 1, 0},
-    };
+private:
+    bool up = false;
+    const int speed = 50; // 每秒像素点
 };
 
 class Tree : public Spirit {
 public:
     Tree() {
-        bitmap.width = 2;
-        bitmap.height = 3;
-        bitmap.data = reinterpret_cast<byte*>(bitmapTree);
+        bitmap.width = tree1_width;
+        bitmap.height = tree1_height;
+        bitmap.data = tree1_data;
     }
     void update(FrameInfo info) override {
         Spirit::update(info);
@@ -43,43 +59,20 @@ public:
             pos.x = info.fb->width() - bitmap.width;
         }
     }
-
-    void onDraw(Canvas *fb) override {
-        fb->drawRect(pos.x, fb->height() - 13, 6, 13, 1);
-    }
-
-    byte bitmapTree[3][2] = {
-            {1, 1},
-            {1, 1},
-            {1, 1},
-    };
 };
 
 class GameScene : public Scene {
 public:
     GameScene() {
-        dragon = std::make_shared<Dragon>();
-        tree1 = std::make_shared<Tree>();
-        tree2 = std::make_shared<Tree>();
-        tree3 = std::make_shared<Tree>();
-        tree4 = std::make_shared<Tree>();
-        addChild(dragon);
-        addChild(tree1);
-        addChild(tree2);
-        addChild(tree3);
-        addChild(tree4);
-
-        tree1->pos.x = 0;
-        tree2->pos.x = 32*1;
-        tree3->pos.x = 32*2;
-        tree4->pos.x = 32*3;
+        addChild(std::make_shared<Dragon>());
+        const int treeNum = 3;
+        for (int i = 0; i < treeNum; ++i) {
+            auto tree = std::make_shared<Tree>();
+            tree->pos.x = SCREEN_WIDTH / treeNum * (i+1);
+            tree->pos.y = SCREEN_HEIGHT - tree->bitmap.height;
+            addChild(tree);
+        }
     }
-
-    std::shared_ptr<Dragon> dragon;
-    std::shared_ptr<Tree> tree1;
-    std::shared_ptr<Tree> tree2;
-    std::shared_ptr<Tree> tree3;
-    std::shared_ptr<Tree> tree4;
 };
 
 void game_task() {

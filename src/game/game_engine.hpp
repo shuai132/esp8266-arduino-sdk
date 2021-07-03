@@ -82,7 +82,7 @@ private:
 struct Bitmap {
     uint16_t width = 0;
     uint16_t height = 0;
-    byte* data = nullptr;
+    const byte* data = nullptr;
 };
 
 class Spirit : public Node {
@@ -92,7 +92,7 @@ public:
         Node::update(info);
     }
     virtual void onDraw(Canvas* fb) {
-        fb->drawXBitmap(pos.x, pos.y, bitmap.data, bitmap.width, bitmap.height, 1);
+        fb->drawBitmap(pos.x, pos.y, bitmap.data, bitmap.width, bitmap.height, 1);
     }
 
 public:
