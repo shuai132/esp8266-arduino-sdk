@@ -175,6 +175,8 @@ static void initHostFromEEPROM() {
 
 void setup() {
 //    test();
+    start_game();
+
     Serial.begin(115200);
     delay(20);
     std::set_new_handler([] {
@@ -182,7 +184,6 @@ void setup() {
     });
 
     LOGI("Hello World");
-    game_task();
 
     initHostFromEEPROM();
 

@@ -24,8 +24,8 @@ protected:
 };
 
 struct Point {
-    int16_t x;
-    int16_t y;
+    float x;
+    float y;
 };
 using Position = Point;
 
@@ -110,8 +110,8 @@ class Scene : public Node {
 public:
     virtual void onUpdate(float deltaMs) {
         screen->onClear();
-        Node::update(deltaMs);
-        Node::onDraw(screen->getCanvas());
+        update(deltaMs);
+        onDraw(screen->getCanvas());
         screen->onDraw();
     }
 
@@ -123,7 +123,7 @@ class Director : noncopyable {
 public:
     void start(uint16_t fps = 15) {
         _fps = fps;
-        _intervalUs = 1000000.f / _fps;
+        _intervalUs = 1000000 / _fps;
         _running = true;
         _lastStartTime = micros();
         while(_running){
@@ -137,9 +137,9 @@ public:
 private:
     void loop() {
         auto startTime = micros();
-        scene->onUpdate(float(1) / 1000.f);
+        scene->onUpdate((startTime - _lastStartTime) / 1000.f);
         auto endTime = micros();
-        _lastStartTime = endTime;
+        _lastStartTime = startTime;
 
         auto deltaUs = endTime - startTime;
         int64_t shouldDelayUs = _intervalUs - deltaUs;
