@@ -22,7 +22,7 @@ using Position = Point;
 
 struct FrameInfo {
     float deltaMs;
-    Canvas* fb;
+    Canvas* canvas;
 };
 
 class Node : noncopyable {
@@ -44,11 +44,6 @@ public:
     void removeChild(std::shared_ptr<Node> node) {
         runOnFrameEnd([this, node = std::move(node)]{
             childs.erase(std::find(childs.begin(), childs.end(), node));
-        });
-    }
-
-    void removeChild(Node* node) {
-        runOnFrameEnd([this, node]{
         });
     }
 
@@ -91,8 +86,8 @@ public:
         onDraw(info.fb);
         Node::update(info);
     }
-    virtual void onDraw(Canvas* fb) {
-        fb->drawBitmap(pos.x, pos.y, bitmap.data, bitmap.width, bitmap.height, 1);
+    virtual void onDraw(Canvas* canvas) {
+        canvas->drawBitmap(pos.x, pos.y, bitmap.data, bitmap.width, bitmap.height, 1);
     }
 
 public:

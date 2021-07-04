@@ -56,7 +56,7 @@ public:
         Spirit::update(info);
         pos.x--;
         if (pos.x + bitmap.width < 0) {
-            pos.x = info.fb->width() - bitmap.width;
+            pos.x = info.canvas->width() - bitmap.width;
         }
     }
 };
@@ -79,5 +79,5 @@ void game_task() {
     auto game = std::make_shared<Director>();
     game->scene = std::make_shared<GameScene>();
     game->scene->screen = std::make_shared<OLEDScreen>();
-    game->start(10);
+    game->start(15);
 }

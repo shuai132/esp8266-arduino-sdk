@@ -174,13 +174,13 @@ static void initHostFromEEPROM() {
 //#include "test.h"
 
 void setup() {
+//    test();
     Serial.begin(115200);
     delay(20);
     std::set_new_handler([] {
         FATAL("out of memory");
     });
 
-    OLED_Init();
     LOGI("Hello World");
     game_task();
 

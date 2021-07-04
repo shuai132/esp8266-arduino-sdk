@@ -1,3 +1,5 @@
+#pragma once
+
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -13,7 +15,7 @@
 // On an arduino LEONARDO:   2(SDA),  3(SCL), ...
 #define OLED_RESET     16 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+extern Adafruit_SSD1306 display;
 
 #define NUMFLAKES     10 // Number of snowflakes in the animation example
 
@@ -37,8 +39,6 @@ static const unsigned char PROGMEM logo_bmp[] =
                 0b01110000, 0b01110000,
                 0b00000000, 0b00110000 };
 
-void loop() {
-}
 
 void testdrawline() {
     int16_t i;
@@ -332,7 +332,7 @@ void testanimate(const uint8_t *bitmap, uint8_t w, uint8_t h) {
 
 
 
-void setup() {
+void test() {
     Serial.begin(9600);
 
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
