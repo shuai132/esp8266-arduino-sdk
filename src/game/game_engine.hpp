@@ -8,11 +8,20 @@
 #include <cstdint>
 #include <cassert>
 #include <Arduino.h>
-#include "noncopyable.h"
 
 #include "OLED.h"
 
 using byte = unsigned char;
+
+class noncopyable {
+public:
+    noncopyable(const noncopyable&) = delete;
+    void operator=(const noncopyable&) = delete;
+
+protected:
+    noncopyable() = default;
+    ~noncopyable() = default;
+};
 
 struct Point {
     int16_t x;
@@ -20,29 +29,30 @@ struct Point {
 };
 using Position = Point;
 
-struct FrameInfo {
-    float deltaMs;
-    Canvas* canvas;
-};
-
 class Node : noncopyable {
 public:
-    virtual void update(FrameInfo info) {
+    virtual void update(float deltaMs) {
         for (const auto& item : childs) {
-            item->update(info);
+            item->update(deltaMs);
+        }
+    }
+
+    virtual void onDraw(Canvas* canvas) {
+        for (const auto& item : childs) {
+            item->onDraw(canvas);
         }
         consumeFrameEndCbs();
     }
 
-    void addChild(std::shared_ptr<Node> node) {
+    void addChild(Node* node) {
         node->_parent = this;
-        runOnFrameEnd([this, node = std::move(node)]{
+        runOnFrameEnd([this, node]{
             childs.push_back(node);
         });
     }
 
-    void removeChild(std::shared_ptr<Node> node) {
-        runOnFrameEnd([this, node = std::move(node)]{
+    void removeChild(Node* node) {
+        runOnFrameEnd([this, node]{
             childs.erase(std::find(childs.begin(), childs.end(), node));
         });
     }
@@ -66,7 +76,7 @@ private:
     }
 
 public:
-    std::vector<std::shared_ptr<Node>> childs;
+    std::vector<Node*> childs;
     Position pos;
 
 private:
@@ -82,10 +92,6 @@ struct Bitmap {
 
 class Spirit : public Node {
 public:
-    void update(FrameInfo info) override {
-        onDraw(info.fb);
-        Node::update(info);
-    }
     virtual void onDraw(Canvas* canvas) {
         canvas->drawBitmap(pos.x, pos.y, bitmap.data, bitmap.width, bitmap.height, 1);
     }
@@ -102,20 +108,15 @@ struct Screen : noncopyable {
 
 class Scene : public Node {
 public:
-    void doUpdate(float deltaMs) {
-        assert(screen);
+    virtual void onUpdate(float deltaMs) {
         screen->onClear();
-        onUpdate(deltaMs);
+        Node::update(deltaMs);
+        Node::onDraw(screen->getCanvas());
         screen->onDraw();
     }
 
-protected:
-    virtual void onUpdate(float deltaMs) {
-        Node::update({deltaMs, screen->getCanvas()});
-    }
-
 public:
-    std::shared_ptr<Screen> screen;
+    Screen* screen;
 };
 
 class Director : noncopyable {
@@ -136,7 +137,7 @@ public:
 private:
     void loop() {
         auto startTime = micros();
-        scene->doUpdate(float(1) / 1000.f);
+        scene->onUpdate(float(1) / 1000.f);
         auto endTime = micros();
         _lastStartTime = endTime;
 
@@ -148,7 +149,7 @@ private:
     }
 
 public:
-    std::shared_ptr<Scene> scene;
+    Scene* scene;
 
 private:
     bool _running = false;

@@ -1,3 +1,3 @@
 #pragma once
 
-void game_task();
+void start_game();

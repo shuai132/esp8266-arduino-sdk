@@ -13,8 +13,8 @@ public:
         pos.x = 10;
         pos.y = SCREEN_HEIGHT - dragon_height;
     }
-    void update(FrameInfo info) override {
-        Spirit::update(info);
+    void update(float deltaMs) override {
+        Spirit::update(deltaMs);
         // update step
         if (bitmap.data == dragon_data_1) {
             bitmap.data = dragon_data_2;
@@ -23,7 +23,7 @@ public:
         }
         auto shouldMovePix = [&]()->int{
             return 0;
-            auto pix = info.deltaMs*speed/1000;
+            auto pix = deltaMs*speed/1000;
             return pix > 1 ? pix : 1;
         };
         if (up) {
@@ -52,11 +52,11 @@ public:
         bitmap.height = tree1_height;
         bitmap.data = tree1_data;
     }
-    void update(FrameInfo info) override {
-        Spirit::update(info);
+    void update(float deltaMs) override {
+        Spirit::update(deltaMs);
         pos.x--;
         if (pos.x + bitmap.width < 0) {
-            pos.x = info.canvas->width() - bitmap.width;
+            pos.x = SCREEN_WIDTH - bitmap.width;
         }
     }
 };
@@ -64,10 +64,10 @@ public:
 class GameScene : public Scene {
 public:
     GameScene() {
-        addChild(std::make_shared<Dragon>());
+        addChild(new Dragon());
         const int treeNum = 3;
         for (int i = 0; i < treeNum; ++i) {
-            auto tree = std::make_shared<Tree>();
+            auto tree = new Tree();
             tree->pos.x = SCREEN_WIDTH / treeNum * (i+1);
             tree->pos.y = SCREEN_HEIGHT - tree->bitmap.height;
             addChild(tree);
@@ -75,9 +75,9 @@ public:
     }
 };
 
-void game_task() {
-    auto game = std::make_shared<Director>();
-    game->scene = std::make_shared<GameScene>();
-    game->scene->screen = std::make_shared<OLEDScreen>();
+void start_game() {
+    auto game = new Director();
+    game->scene = new GameScene();
+    game->scene->screen = new OLEDScreen();
     game->start(15);
 }
