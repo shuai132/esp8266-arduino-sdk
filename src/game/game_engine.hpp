@@ -136,7 +136,7 @@ private:
         _lastStartTime = startTime;
 
         auto deltaUs = endTime - startTime;
-        auto shouldDelayUs = _intervalUs - deltaUs;
+        long shouldDelayUs = _intervalUs - deltaUs;
         if (shouldDelayUs > 0) {
             delayUs(shouldDelayUs);
         }

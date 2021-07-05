@@ -1,5 +1,7 @@
 #pragma once
 
+#include "typedef.h"
+
 #define dragon_width  16
 #define dragon_height 17
 

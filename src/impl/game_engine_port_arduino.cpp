@@ -4,13 +4,17 @@
 namespace ge {
 
 unsigned long nowMs() {
-    return micros();
-}
-unsigned long nowUs() {
     return millis();
 }
+unsigned long nowUs() {
+    return micros();
+}
 void delayUs(unsigned int us) {
-    delay(us);
+    delayMicroseconds(us);
+}
+
+bool checkButton() {
+    return !digitalRead(0);
 }
 
 }

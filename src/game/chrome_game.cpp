@@ -2,8 +2,13 @@
 #include "game_engine.hpp"
 #include "img/dragon.h"
 #include "img/tree.h"
+
+#ifdef ARDUINO
 #include "OLED.h"
-#include "game/impl/game_engine_port_arduino.h"
+#include "impl/game_engine_port_arduino.h"
+#else
+#include "impl/game_engine_port_desktop.h"
+#endif
 
 using namespace ge;
 
@@ -32,12 +37,11 @@ public:
     void tap() {
         if (!_onGround) return;
         _onGround = false;
-        _upping = true;
         _speed = speedInit;
     }
 
 public:
-    bool isOnGround() { return _onGround; }
+    bool isOnGround() const { return _onGround; }
 
 private:
     void updateBitmap() {
@@ -58,14 +62,17 @@ private:
 private:
     // 跳跃的物理模拟参数 时间和高度尺度变换
     // H = 1/2 * a * t^2
+#ifdef ARDUINO
     const int H = 20;           // 最高上升到像素/pix
+#else
+    const int H = 14;
+#endif
     const float expectMs = 500; // 跳跃过程持续时间/ms
     const float halfMs = expectMs / 2;
     const double acceleration = H * 2 / (halfMs * halfMs);
     const float speedInit = acceleration * halfMs;
 
     bool _onGround = true;
-    bool _upping = false;
     float _speed;
     unsigned long _lastSwitchTime;
 };
@@ -92,8 +99,8 @@ private:
 class Score : public Node {
 public:
     void onDraw(Canvas *canvas) override {
-        canvas->drawText(SCREEN_WIDTH - 6*5, 0, "%05d", (int)score);
-        canvas->drawText(SCREEN_WIDTH - 6*(5+7), 0, "FPS:%d", (int)ceil(realFps));
+        canvas->drawText(SCREEN_WIDTH - PIX_PER_CHAR*5, 0, "%05d", (int)score);
+        canvas->drawText(SCREEN_WIDTH - PIX_PER_CHAR*(5+7), 0, "FPS:%d", (int)ceil(realFps));
     }
     void update(float deltaMs) override {
         realFps = 1000 / deltaMs;
@@ -122,7 +129,7 @@ protected:
         Scene::update(deltaMs);
         _score->score += deltaMs / 100; // one score per 100ms
 
-        if (!digitalRead(0)) {
+        if (checkButton()) {
             _dragon->tap();
         }
     };
@@ -135,7 +142,6 @@ private:
 void start_game() {
     auto game = new Director();
     game->scene = new GameScene();
-    game->scene->canvas = new OLEDScreen();
-    // for best display
-    game->start(60);
+    game->scene->canvas = new Screen();
+    game->start(90);
 }
