@@ -1,4 +1,7 @@
 #include "chrome_game.h"
+
+#include <string>
+#include <cmath>
 #include "game_engine.hpp"
 #include "img/dragon.h"
 #include "img/tree.h"
@@ -18,8 +21,7 @@ public:
         bitmap.width = dragon_width;
         bitmap.height = dragon_height;
         bitmap.data = dragon_data;
-        pos.x = 10;
-        pos.y = SCREEN_HEIGHT - dragon_height;
+        reset();
     }
     void update(float deltaMs) override {
         Spirit::update(deltaMs);
@@ -38,6 +40,10 @@ public:
         if (!_onGround) return;
         _onGround = false;
         _speed = speedInit;
+    }
+    void reset() {
+        pos.x = 10;
+        pos.y = SCREEN_HEIGHT - dragon_height;
     }
 
 public:
@@ -62,11 +68,7 @@ private:
 private:
     // 跳跃的物理模拟参数 时间和高度尺度变换
     // H = 1/2 * a * t^2
-#ifdef ARDUINO
     const int H = 20;           // 最高上升到像素/pix
-#else
-    const int H = 14;
-#endif
     const float expectMs = 500; // 跳跃过程持续时间/ms
     const float halfMs = expectMs / 2;
     const double acceleration = H * 2 / (halfMs * halfMs);
@@ -109,23 +111,79 @@ public:
     float realFps = 0;
 };
 
+class GameLogic : public Node {
+public:
+    explicit GameLogic(Dragon* dragon, std::vector<Tree*>* trees)
+        : _dragon(dragon), _trees(trees) {}
+
+    void update(float deltaMs) override {
+        Node::update(deltaMs);
+        for (const auto& tree : *_trees) {
+            if (abs(_dragon->pos.x - tree->pos.x) < dragon_width * 0.2f) {
+                // 贴近的时候判断高度 要大于一定数值
+                if (_dragon->pos.y + dragon_height > tree->pos.y + tree2_height * 0.2f) {
+                    onGameOver();
+                } else {
+                    // will trigger more times
+                    //onPassTree();
+                }
+            }
+        }
+    }
+    void onDraw(Canvas *canvas) override {
+        if (isGameOver) {
+            const std::string gameOver("GAME OVER");
+            canvas->drawString((SCREEN_WIDTH - PIX_PER_CHAR*(gameOver.length())) / 2, SCREEN_HEIGHT / 2, gameOver.c_str());
+        }
+    }
+
+private:
+    void onGameOver() {
+        isGameOver = true;
+        if (gameOverCb) gameOverCb();
+    }
+    void onPassTree() {
+        if (passTreeCb) passTreeCb();
+    }
+
+public:
+    std::function<void()> gameOverCb;
+    std::function<void()> passTreeCb;
+    bool isGameOver = false;
+
+private:
+    Dragon* _dragon;
+    std::vector<Tree*>* _trees;
+};
+
 class GameScene : public Scene {
 public:
     GameScene() {
         addChild(_dragon);
         addChild(_score);
-        const int treeNum = 2;
+        addChild(_gameLogic);
+
         for (int i = 0; i < treeNum; ++i) {
             auto tree = new Tree;
-            tree->pos.x = SCREEN_WIDTH / treeNum * (i + 1);
-            tree->pos.y = SCREEN_HEIGHT - tree->bitmap.height;
             addChild(tree);
+            _trees.push_back(tree);
         }
+
+        _gameLogic->passTreeCb = [this]{
+            _score->score += 100;
+        };
+
+        restart();
     }
 
 protected:
     void update(float deltaMs) override {
-        ESP.wdtFeed();
+        if (_gameLogic->isGameOver) {
+            if (checkButton()) {
+                restart();
+            }
+            return;
+        }
         Scene::update(deltaMs);
         _score->score += deltaMs / 100; // one score per 100ms
 
@@ -135,13 +193,28 @@ protected:
     };
 
 private:
+    void restart() {
+        _gameLogic->isGameOver = false;
+        _score->score = 0;
+        _dragon->reset();
+        for (int i = 0; i < treeNum; ++i) {
+            const auto& tree = _trees[i];
+            tree->pos.x = SCREEN_WIDTH / treeNum * (i + 1);
+            tree->pos.y = SCREEN_HEIGHT - tree->bitmap.height;
+        }
+    }
+
+private:
+    const int treeNum = 2;
     Dragon* _dragon = new Dragon;
     Score* _score = new Score;
+    std::vector<Tree*> _trees;
+    GameLogic* _gameLogic = new GameLogic(_dragon, &_trees);
 };
 
 void start_game() {
     auto game = new Director();
     game->scene = new GameScene();
     game->scene->canvas = new Screen();
-    game->start(90);
+    game->start(120);
 }

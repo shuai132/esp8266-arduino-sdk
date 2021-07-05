@@ -5,6 +5,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <memory>
+#include <string.h>
 
 namespace ge {
 
@@ -18,6 +19,10 @@ struct Canvas {
     virtual void drawBitmap(uint16_t x, uint16_t y, const uint8_t bitmap[], uint16_t w, uint16_t h, uint16_t color) = 0;
 
     virtual size_t drawBuffer(uint16_t x, uint16_t y, const char* buffer, size_t len) = 0;
+
+    size_t drawString(uint16_t x, uint16_t y, const char* str) {
+        return drawBuffer(x, y, str, strlen(str));
+    }
 
     size_t drawText(uint16_t x, uint16_t y, const char* format, ...) {
         va_list arg;
