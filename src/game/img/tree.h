@@ -1,7 +1,5 @@
 #pragma once
 
-#define PROGMEM
-
 #define tree1_width  8
 #define tree1_height 16
 

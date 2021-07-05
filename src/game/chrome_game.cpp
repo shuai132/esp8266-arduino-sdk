@@ -1,8 +1,11 @@
 #include "chrome_game.h"
 #include "game_engine.hpp"
-#include "screen/OLEDScreen.h"
 #include "img/dragon.h"
 #include "img/tree.h"
+#include "OLED.h"
+#include "game/impl/game_engine_port_arduino.h"
+
+using namespace ge;
 
 class Dragon : public Spirit {
 public:
@@ -39,7 +42,7 @@ public:
 private:
     void updateBitmap() {
         if (isOnGround()) {
-            auto now = millis();
+            auto now = nowMs();
             if (now - _lastSwitchTime < 100) return;
             _lastSwitchTime = now;
             if (bitmap.data == dragon_data_1) {
@@ -89,12 +92,8 @@ private:
 class Score : public Node {
 public:
     void onDraw(Canvas *canvas) override {
-        canvas->setTextSize(1);
-        canvas->setTextColor(SSD1306_WHITE);
-        canvas->setCursor(SCREEN_WIDTH - 6*5, 0);
-        canvas->printf("%05d", (int)score);
-        canvas->setCursor(SCREEN_WIDTH - 6*(5+7), 0);
-        canvas->printf("FPS:%d", (int)ceil(realFps));
+        canvas->drawText(SCREEN_WIDTH - 6*5, 0, "%05d", (int)score);
+        canvas->drawText(SCREEN_WIDTH - 6*(5+7), 0, "FPS:%d", (int)ceil(realFps));
     }
     void update(float deltaMs) override {
         realFps = 1000 / deltaMs;
@@ -136,7 +135,7 @@ private:
 void start_game() {
     auto game = new Director();
     game->scene = new GameScene();
-    game->scene->screen = new OLEDScreen();
+    game->scene->canvas = new OLEDScreen();
     // for best display
     game->start(60);
 }

@@ -1,7 +1,5 @@
 #pragma once
 
-#define PROGMEM
-
 #define dragon_width  16
 #define dragon_height 17
 

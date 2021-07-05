@@ -1,31 +1,30 @@
 #pragma once
 
 #include <vector>
-#include <thread>
-#include <chrono>
 #include <functional>
 #include <algorithm>
 #include <cstdint>
-#include <cassert>
-#include <Arduino.h>
+#include "game_engine_port.h"
 
-#include "OLED.h"
+namespace ge {
 
 using byte = unsigned char;
 
 class noncopyable {
 public:
     noncopyable(const noncopyable&) = delete;
+
     void operator=(const noncopyable&) = delete;
 
 protected:
     noncopyable() = default;
+
     ~noncopyable() = default;
 };
 
 struct Point {
-    float x;
-    float y;
+    float x = 0;
+    float y = 0;
 };
 using Position = Point;
 
@@ -46,13 +45,13 @@ public:
 
     void addChild(Node* node) {
         node->_parent = this;
-        runOnFrameEnd([this, node]{
+        runOnFrameEnd([this, node] {
             childs.push_back(node);
         });
     }
 
     void removeChild(Node* node) {
-        runOnFrameEnd([this, node]{
+        runOnFrameEnd([this, node] {
             childs.erase(std::find(childs.begin(), childs.end(), node));
         });
     }
@@ -92,7 +91,7 @@ struct Bitmap {
 
 class Spirit : public Node {
 public:
-    virtual void onDraw(Canvas* canvas) {
+    void onDraw(Canvas* canvas) override {
         canvas->drawBitmap(pos.x, pos.y, bitmap.data, bitmap.width, bitmap.height, 1);
     }
 
@@ -100,23 +99,17 @@ public:
     Bitmap bitmap;
 };
 
-struct Screen : noncopyable {
-    virtual void onClear() = 0;
-    virtual void onDraw() = 0;
-    virtual Canvas* getCanvas() = 0;
-};
-
 class Scene : public Node {
 public:
     virtual void onUpdate(float deltaMs) {
-        screen->onClear();
+        canvas->onClear();
         update(deltaMs);
-        onDraw(screen->getCanvas());
-        screen->onDraw();
+        onDraw(canvas);
+        canvas->onDraw();
     }
 
 public:
-    Screen* screen;
+    Canvas* canvas;
 };
 
 class Director : noncopyable {
@@ -125,26 +118,27 @@ public:
         _fps = fps;
         _intervalUs = 1000000 / _fps;
         _running = true;
-        _lastStartTime = micros();
-        while(_running){
+        _lastStartTime = nowUs();
+        while (_running) {
             loop();
         }
     }
+
     void stop() {
         _running = false;
     }
 
 private:
     void loop() {
-        auto startTime = micros();
-        scene->onUpdate((startTime - _lastStartTime) / 1000.f);
-        auto endTime = micros();
+        auto startTime = nowUs();
+        scene->onUpdate(float(startTime - _lastStartTime) / 1000.f);
+        auto endTime = nowUs();
         _lastStartTime = startTime;
 
         auto deltaUs = endTime - startTime;
-        int64_t shouldDelayUs = _intervalUs - deltaUs;
+        auto shouldDelayUs = _intervalUs - deltaUs;
         if (shouldDelayUs > 0) {
-            delayMicroseconds(shouldDelayUs);
+            delayUs(shouldDelayUs);
         }
     }
 
@@ -153,8 +147,9 @@ public:
 
 private:
     bool _running = false;
-    uint16_t _fps{};
-    uint32_t _intervalUs{};
-
+    uint16_t _fps;
+    unsigned long _intervalUs;
     unsigned long _lastStartTime;
 };
+
+}
