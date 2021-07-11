@@ -6,7 +6,8 @@
 
 struct Screen : public ge::Canvas {
     Screen() {
-        display.begin();
+        Wire.begin(D1, D2);
+        display.begin(SSD1306_SWITCHCAPVCC, 0x3c, true, false);
     }
 
     void onClear() override {
